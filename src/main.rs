@@ -8,7 +8,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-/// 交易结构
+/// 交易结构体(发送者、接收者、数量)
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Transaction {
     sender: String,
@@ -29,12 +29,12 @@ impl Transaction {
 /// 区块结构
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Block {
-    index: u64,
-    timestamp: u64,
-    transactions: Vec<Transaction>,
-    previous_hash: String,
-    hash: String,
-    nonce: u64,
+    index: u64, //区块号
+    timestamp: u64, //时间戳
+    transactions: Vec<Transaction>, //区块中包含的所有交易
+    previous_hash: String,//上一个区块的hash
+    hash: String, //这个区块的hash
+    nonce: u64,  //解决工作量证明难题的变量
     mined_by: String, // 添加字段，记录矿工地址
 }
 
@@ -76,11 +76,11 @@ impl Block {
 /// 区块链
 #[derive(Debug)]
 struct Blockchain {
-    chain: Vec<Block>,
-    transaction_pool: Vec<Transaction>,
-    difficulty: usize,
-    mining_reward: u64,
-    accounts: HashMap<String, u64>,
+    chain: Vec<Block>,//很多区块组成区块链
+    transaction_pool: Vec<Transaction>,//交易内存池
+    difficulty: usize,//难度
+    mining_reward: u64,//挖矿奖励
+    accounts: HashMap<String, u64>,//每个地址对应的余额
 }
 
 impl Blockchain {
@@ -93,20 +93,22 @@ impl Blockchain {
             accounts: HashMap::new(),
         };
         blockchain.add_genesis_block();
-
+        //默认初始有两个钱包，分别给不同的余额
         blockchain.accounts.insert("Alice".to_string(), 100);
         blockchain.accounts.insert("Bob".to_string(), 50);
 
         blockchain
     }
-
+    //添加创世区块
     fn add_genesis_block(&mut self) {
+        //创世区块的序号是0，里面不包含交易，前一个区块hash是0
         let mut genesis_block = Block::new(0, vec![], "0".to_string());
         genesis_block.mine_block(self.difficulty, "系统奖励");
         self.chain.push(genesis_block);
     }
-
+    //向交易内存池添加交易
     fn add_transaction(&mut self, transaction: Transaction) {
+        //从区块链账户映射找到交易发起者的余额，或者没有这个发起者账户
         if let Some(sender_balance) = self.accounts.get(&transaction.sender) {
             if *sender_balance < transaction.amount {
                 println!("交易失败：余额不足！");
@@ -118,13 +120,15 @@ impl Blockchain {
         }
         self.transaction_pool.push(transaction);
     }
-
+    //挖矿打包内存池中的交易
     fn mine_pending_transactions(&mut self, miner_address: String) {
+        //创建了一笔奖励交易，从“系统奖励”发送给矿工地址，用于奖励矿工打包区块
         let reward_transaction = Transaction::new(
             "系统奖励".to_string(),
             miner_address.clone(),
             self.mining_reward,
         );
+        //奖励矿工交易放进内存池中，意味着奖励交易即将包含在被挖出的区块中
         self.transaction_pool.push(reward_transaction);
 
         let previous_hash = self.chain.last().unwrap().hash.clone();
