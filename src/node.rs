@@ -13,16 +13,16 @@ pub fn start_node(blockchain: Arc<Mutex<Blockchain>>, address: String, peers: Ve
     println!("节点启动，监听地址: {}", address);
 
     // 克隆 Arc<Mutex<Blockchain>>，以便线程内使用
-    let blockchain_clone = Arc::clone(&blockchain);
+    let blockchain_for_miner = Arc::clone(&blockchain);
     let miner_address = address.clone();
     
-    // 使用线程内的 blockchain_clone，并保持主线程的 blockchain 不被移动
+    // 挖矿线程
     thread::spawn(move || {
         loop {
             thread::sleep(Duration::from_millis(100));
             let new_block;
             {
-                let blockchain = blockchain_clone.lock().unwrap();
+                let blockchain = blockchain_for_miner.lock().unwrap();
                 if blockchain.transaction_pool.is_empty() {
                     continue;
                 }
@@ -41,10 +41,10 @@ pub fn start_node(blockchain: Arc<Mutex<Blockchain>>, address: String, peers: Ve
 
             // 使 new_block 可变，并执行挖矿
             let mut new_block = new_block;
-            new_block.mine_block(blockchain_clone.lock().unwrap().difficulty, &miner_address);
+            new_block.mine_block(blockchain_for_miner.lock().unwrap().difficulty, &miner_address);
 
             // 区块挖掘成功后将其加入区块链
-            let mut blockchain = blockchain_clone.lock().unwrap();
+            let mut blockchain = blockchain_for_miner.lock().unwrap();
             blockchain.integrate_new_block(new_block);
         }
     });
@@ -52,13 +52,14 @@ pub fn start_node(blockchain: Arc<Mutex<Blockchain>>, address: String, peers: Ve
     // 接受传入连接
     for stream in listener.incoming() {
         let stream = stream.unwrap();
-        let blockchain = Arc::clone(&blockchain); // 在主线程中克隆 Arc
+        let blockchain_for_handler = Arc::clone(&blockchain); // 在主线程中克隆 Arc
         let peers = peers.clone();
         thread::spawn(move || {
-            handle_connection(stream, blockchain, peers);
+            handle_connection(stream, blockchain_for_handler, peers);
         });
     }
 }
+
 
 fn handle_connection(mut stream: TcpStream, blockchain: Arc<Mutex<Blockchain>>, _peers: Vec<String>) {
     let mut buffer = [0; 512];
