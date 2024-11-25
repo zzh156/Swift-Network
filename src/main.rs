@@ -1,66 +1,63 @@
 mod blockchain;
 mod block;
 mod transaction;
-mod node;
 mod utils;
 
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use blockchain::Blockchain;
+use blockchain::Dag;
 use transaction::Transaction;
 
 fn main() {
-    // 创建区块链实例，并使用线程安全的 Arc 和 Mutex 包装
-    let blockchain = Arc::new(Mutex::new(Blockchain::new(5, 50))); // 挖矿难度: 5，奖励: 50
+    // 创建 DAG 实例
+    let dag = Arc::new(Mutex::new(Dag::new()));
 
-    // 初始化区块链，添加创世区块
+    // 初始化 DAG，添加创世节点
     {
-        let mut blockchain = blockchain.lock().unwrap();
-        blockchain.add_genesis_block(); // 添加创世区块
+        let mut dag = dag.lock().unwrap();
+        dag.add_genesis_node();
+        dag.accounts.insert("Alice".to_string(), 100);
+        dag.accounts.insert("Bob".to_string(), 50);
     }
 
-    let node_addresses = Arc::new(vec![
-        "127.0.0.1:7878".to_string(),
-        "127.0.0.1:7879".to_string(),
-        "127.0.0.1:7880".to_string(),
-    ]);
-
-    // 启动每个节点
-    for address in node_addresses.iter() {
-        let blockchain_for_node = Arc::clone(&blockchain);
-        let node_addresses = Arc::clone(&node_addresses);
-        let address = address.clone();
-        thread::spawn(move || {
-            let peers: Vec<String> = node_addresses
-                .iter()
-                .filter(|peer| **peer != address)
-                .cloned()
-                .collect();
-            node::start_node(blockchain_for_node, address, peers);
-        });
-    }
-
-    // 定期打印区块链状态
-    let blockchain_for_output: Arc<Mutex<Blockchain>> = Arc::clone(&blockchain);
+    // 定期打印 DAG 状态
+    let dag_for_output = Arc::clone(&dag);
     thread::spawn(move || {
         loop {
             thread::sleep(Duration::from_secs(5));
-            let blockchain = blockchain_for_output.lock().unwrap();
-            println!("\n--- 区块链状态 ---");
-            println!("区块数量: {}", blockchain.chain.len());
-            println!("账户余额: {:?}", blockchain.accounts);
-            println!("UTXO 集合: {:?}", blockchain.utxo_set);
-            println!("\n");
+            let dag = dag_for_output.lock().unwrap();
+            println!("\n--- DAG 状态 ---");
+            dag.print_status();
         }
     });
 
     // 初始化交易
     {
-        let mut blockchain = blockchain.lock().unwrap();
-        blockchain.add_transaction(Transaction::new("Alice".to_string(), "Bob".to_string(), 10));
+        let mut dag = dag.lock().unwrap();
+        dag.add_transaction(Transaction::new("Alice".to_string(), "Bob".to_string(), 10));
     }
+
+    // 定期创建新节点
+    let dag_for_node_creation = Arc::clone(&dag);
+    thread::spawn(move || {
+        loop {
+            thread::sleep(Duration::from_secs(10));
+            let mut dag = dag_for_node_creation.lock().unwrap();
+            dag.create_new_node();
+        }
+    });
+
+    // 定期确认交易
+    let dag_for_confirmation = Arc::clone(&dag);
+    thread::spawn(move || {
+        loop {
+            thread::sleep(Duration::from_secs(15));
+            let mut dag = dag_for_confirmation.lock().unwrap();
+            dag.confirm_transactions();
+        }
+    });
 
     // 主线程保持运行
     loop {

@@ -2,57 +2,45 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use crate::transaction::Transaction;
 use crate::utils::{current_timestamp, calculate_merkle_root};
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Block {
-    pub index: u64,                      // 区块高度
-    pub timestamp: u64,                  // 区块生成时间戳
-    pub transactions: Vec<Transaction>,  // 区块包含的交易
-    pub merkle_root: String,             // 默克尔树根哈希
-    pub previous_hash: String,           // 前一个区块的哈希
-    pub hash: String,                    // 当前区块的哈希
-    pub nonce: u64,                      // 随机数（用于工作量证明）
-    pub mined_by: String,                // 挖出该区块的矿工地址
+pub struct DagNode {
+    pub id: String, // DAG 节点的唯一标识
+    pub timestamp: u64, // 节点生成时间戳
+    pub transactions: Vec<Transaction>, // 节点包含的交易
+    pub parent_hashes: Vec<String>, // 父节点哈希
+    pub merkle_root: String, // 默克尔树根哈希
+    pub hash: String, // 当前节点的哈希
+    pub weight: u64, // 节点的权重（用于确认机制）
 }
 
-impl Block {
-    pub fn new(index: u64, transactions: Vec<Transaction>, previous_hash: String) -> Self {
+impl DagNode {
+    pub fn new(transactions: Vec<Transaction>, parent_hashes: Vec<String>) -> Self {
+        //计算交易集合的默克尔根，用于验证交易完整性。
         let merkle_root = calculate_merkle_root(&transactions);
-        Block {
-            index,
+        let mut node = DagNode {
+            id: uuid::Uuid::new_v4().to_string(), // 使用 UUID 生成唯一标识
             timestamp: current_timestamp(),
             transactions,
+            parent_hashes,
             merkle_root,
-            previous_hash,
             hash: String::new(),
-            nonce: 0,
-            mined_by: String::new(),
-        }
+            weight: 0, // 初始权重为 0
+        };
+        node.hash = node.calculate_hash(); // 根据节点内容（时间戳、交易、父节点等）计算节点的哈希值，确保节点不可篡改。
+        node
     }
 
-    // 计算区块的哈希值
+    // 计算 DAG 节点的哈希值
     pub fn calculate_hash(&self) -> String {
-        let block_content = format!(
-            "{}{}{}{}{}{}",
-            self.index, self.timestamp, self.merkle_root, self.transactions.len(), self.previous_hash, self.nonce
+        let node_content = format!(
+            "{}{}{}{:?}",
+            self.timestamp, self.merkle_root, self.parent_hashes.join(","), self.transactions
         );
         let mut hasher = Sha256::new();
-        hasher.update(block_content);
+        hasher.update(node_content);
         let result = hasher.finalize();
         hex::encode(result)
-    }
-
-    // 挖矿逻辑
-    pub fn mine_block(&mut self, difficulty: usize, miner_address: &str) {
-        self.mined_by = miner_address.to_string();
-        let target = "0".repeat(difficulty); // 挖矿目标
-        while !self.hash.starts_with(&target) {
-            self.nonce += 1;
-            self.hash = self.calculate_hash();
-        }
-        println!(
-            "矿工 {} 成功挖出区块: {} (Nonce: {})",
-            miner_address, self.hash, self.nonce
-        );
     }
 }
