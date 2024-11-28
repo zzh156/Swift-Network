@@ -13,3 +13,5 @@ uuid = { version = "1.11", features = ["v4"] }
 ed25519-dalek = "1.0.1"  # 使用最新的兼容版本
 bip39 = { version = "2.1.0", default-features = false }
 curve25519-dalek = "3.2"  # 确保使用的版本兼容
+hyper = { version = "0.14", features = ["full"] }  # 添加 hyper 依赖
+tokio = { version = "1", features = ["full"] }  # 添加 tokio 依赖
