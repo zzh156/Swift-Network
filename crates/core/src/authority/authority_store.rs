@@ -5,7 +5,7 @@ use crate::transaction::{Transaction, TransactionDigest, TransactionEffects};
 use serde::{Serialize, Deserialize};
 use std::sync::Arc;
 
-/// Store configuration
+/// Store configuration 
 #[derive(Debug, Clone)]
 pub struct StoreConfig {
     /// Storage configuration

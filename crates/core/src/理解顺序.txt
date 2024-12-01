@@ -1,0 +1,85 @@
+我建议按照以下顺序来理解这个区块链项目的代码，从基础组件到高层功能逐步深入：
+1. 基础层
+首先了解最基础的数据结构和工具：
+1. core/
+   - types.rs     // 基础数据类型
+   - object.rs    // 对象模型
+
+2. utils/
+   - crypto.rs    // 通用工具函数
+
+3. crypto/
+   - keypair.rs   // 密钥对管理
+   - signature.rs // 数字签名
+2. 存储层
+理解数据如何持久化：
+1. storage/
+   - object_store.rs // 对象存储
+   - rocks_store.rs  // RocksDB实现
+   - cache.rs        // 缓存实现
+
+2. state/
+   - store.rs        // 状态存储
+   - checkpoint.rs   // 检查点管理
+3. 交易处理
+了解交易如何被处理：
+1. transaction/
+   - manager.rs    // 交易管理
+   - validator.rs  // 交易验证
+
+2. execution/
+   - executor.rs   // 交易执行
+   - effects.rs    // 执行效果
+   - gas.rs        // gas计费
+4. 共识机制
+研究共识是如何达成的：
+1. consensus/
+   - narwhal.rs    // Narwhal共识
+   - bullshark.rs  // Bullshark共识
+   - dag.rs        // DAG结构
+
+2. quorum_driver/
+   - driver.rs     // 仲裁驱动
+5. 网络通信
+了解节点间如何通信：
+1. network/
+   - p2p.rs       // P2P网络实现
+
+2. protocol/
+   - messages.rs  // 协议消息
+   - types.rs     // 协议类型
+6. 权限管理
+研究验证者节点管理：
+1. authority/
+   - authority.rs      // 权限核心逻辑
+   - validator.rs      // 验证者实现
+   - epoch_manager.rs  // 轮次管理
+7. 智能合约
+了解智能合约实现：
+1. runtime/
+   - move_vm.rs    // Move虚拟机
+   - execution/    // 执行环境
+
+2. framework/
+   - contracts/    // 系统合约
+8. 系统管理
+最后是整个系统的治理：
+1. swift_system/
+   - governance.rs // 治理系统
+   - stake.rs      // 质押系统
+   - rewards.rs    // 奖励系统
+9. 辅助功能
+这些可以最后了解：
+1. indexer/    // 区块链数据索引
+2. mempool/    // 交易内存池
+3. metrics/    // 系统监控
+4. telemetry/  // 遥测系统
+学习建议：
+每个模块先看 mod.rs，了解模块整体结构
+画图理解各模块之间的关系
+重点关注核心流程：
+交易处理流程
+共识达成流程
+状态更新流程
+使用调试工具跟踪关键流程的代码执行
+这样由底向上的学习顺序可以帮助你更好地理解整个系统的设计和实现。每个层次都建立在前面的基础之上，逐步构建起完整的认知体系。
